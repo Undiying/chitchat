@@ -26,6 +26,7 @@ body, html {
   background-color: var(--bg-color);
   color: var(--text-primary);
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   display: flex;
@@ -150,7 +151,9 @@ body, html {
 }
 
 .audio-message {
-  width: 250px;
+  width: 100%;
+  min-width: 220px;
+  max-width: 280px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -242,6 +245,32 @@ body, html {
   animation: pulse 1.5s infinite;
 }
 
+.btn-record-large {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-gradient);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+  transition: transform 0.2s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-record-large:active {
+  transform: scale(0.9);
+}
+
+.btn-record-large.recording {
+  background: var(--danger-color);
+  animation: pulse-large 1.5s infinite;
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+}
+
 .btn-secondary {
   background: transparent;
   color: var(--text-secondary);
@@ -271,7 +300,7 @@ body, html {
   padding: 24px;
   border-radius: 16px;
   border: 1px solid var(--border-color);
-  width: 100%;
+  width: 90%;
   max-width: 320px;
   display: flex;
   flex-direction: column;
@@ -311,6 +340,12 @@ body, html {
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
   70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes pulse-large {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); }
   100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 

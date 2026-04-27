@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Send, Paperclip, X, QrCode } from 'lucide-react';
+import { Mic, Send, Paperclip, X, QrCode, Keyboard } from 'lucide-react';
 import { initializePeer, connectToPeer, getDeterministicId } from './peerUtils';
 import { QRCodeSVG } from 'qrcode.react';
 import { saveMessage, getAllMessages, initDB } from './idbUtils';
@@ -17,6 +17,7 @@ function App() {
   const [isProfileCreated, setIsProfileCreated] = useState(false);
   const [remoteEmail, setRemoteEmail] = useState('');
   const [showQR, setShowQR] = useState(false);
+  const [inputMode, setInputMode] = useState('audio'); // 'audio' or 'text'
 
   const peerRef = useRef(null);
   const connRef = useRef(null);
@@ -84,7 +85,7 @@ function App() {
     
     // If it's an audio blob, it comes as an ArrayBuffer or Blob
     if (data.type === 'audio' && data.audioBuffer) {
-      newMessage.audioBlob = new Blob([data.audioBuffer], { type: 'audio/webm' });
+      newMessage.audioBlob = new Blob([data.audioBuffer], { type: data.mimeType || 'audio/webm' });
     }
 
     await saveMessage(newMessage);
@@ -111,13 +112,15 @@ function App() {
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const mimeType = mediaRecorder.mimeType;
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const arrayBuffer = await audioBlob.arrayBuffer(); // To send over peerjs
         
         const message = {
           id: Date.now().toString(),
           type: 'audio',
           audioBuffer: arrayBuffer, // Send buffer over WebRTC
+          mimeType: mimeType,
           timestamp: Date.now(),
           replyContext: replyContext,
         };
@@ -322,34 +325,49 @@ function App() {
       )}
 
       <div className="input-area">
-        <button className="action-btn btn-secondary">
-          <Paperclip size={20} />
-        </button>
-        
-        <input 
-          type="text" 
-          className="text-input"
-          placeholder="Type a message..."
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && sendTextMessage()}
-        />
-
-        {inputText ? (
-          <button className="action-btn btn-record" onClick={sendTextMessage}>
-            <Send size={20} />
-          </button>
+        {inputMode === 'audio' ? (
+          <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
+            <button className="action-btn btn-secondary" onClick={() => setInputMode('text')} title="Switch to text">
+              <Keyboard size={24} />
+            </button>
+            
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+              <button 
+                className={`btn-record-large ${isRecording ? 'recording' : ''}`}
+                onMouseDown={startRecording}
+                onMouseUp={stopRecording}
+                onTouchStart={startRecording}
+                onTouchEnd={stopRecording}
+                title="Hold to record voice note"
+              >
+                <Mic size={32} />
+              </button>
+            </div>
+            
+            <button className="action-btn btn-secondary" style={{ visibility: 'hidden' }}>
+              <Paperclip size={20} />
+            </button>
+          </div>
         ) : (
-          <button 
-            className={`action-btn ${isRecording ? 'btn-recording' : 'btn-record'}`}
-            onMouseDown={startRecording}
-            onMouseUp={stopRecording}
-            onTouchStart={startRecording}
-            onTouchEnd={stopRecording}
-            title="Hold to record voice note"
-          >
-            <Mic size={20} />
-          </button>
+          <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '8px' }}>
+            <button className="action-btn btn-secondary" onClick={() => setInputMode('audio')} title="Switch to audio">
+              <Mic size={20} />
+            </button>
+            
+            <input 
+              type="text" 
+              className="text-input"
+              placeholder="Type a message..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && sendTextMessage()}
+              autoFocus
+            />
+
+            <button className="action-btn btn-record" onClick={sendTextMessage} disabled={!inputText.trim()}>
+              <Send size={20} />
+            </button>
+          </div>
         )}
       </div>
     </div>
