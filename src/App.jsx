@@ -83,8 +83,8 @@ function App() {
       timestamp: data.timestamp || Date.now(),
     };
     
-    // If it's an audio blob, it comes as an ArrayBuffer or Blob
-    if (data.type === 'audio' && data.audioBuffer) {
+    // Legacy support for ArrayBuffer messages if testing with old messages
+    if (data.type === 'audio' && data.audioBuffer && !data.audioData) {
       newMessage.audioBlob = new Blob([data.audioBuffer], { type: data.mimeType || 'audio/webm' });
     }
 
@@ -112,32 +112,34 @@ function App() {
       };
 
       mediaRecorder.onstop = async () => {
-        const mimeType = mediaRecorder.mimeType;
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        const arrayBuffer = await audioBlob.arrayBuffer(); // To send over peerjs
         
-        const message = {
-          id: Date.now().toString(),
-          type: 'audio',
-          audioBuffer: arrayBuffer, // Send buffer over WebRTC
-          mimeType: mimeType,
-          timestamp: Date.now(),
-          replyContext: replyContext,
-        };
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = reader.result;
 
-        sendMessageOverPeer(message);
-        
-        // Save locally
-        const localMessage = {
-          ...message,
-          isOwn: true,
-          audioBlob: audioBlob,
+          const message = {
+            id: Date.now().toString(),
+            type: 'audio',
+            audioData: base64Audio,
+            timestamp: Date.now(),
+            replyContext: replyContext,
+          };
+
+          sendMessageOverPeer(message);
+          
+          const localMessage = {
+            ...message,
+            isOwn: true,
+          };
+          await saveMessage(localMessage);
+          setMessages(prev => [...prev, localMessage]);
+          
+          setReplyContext(null);
+          stream.getTracks().forEach(track => track.stop());
         };
-        await saveMessage(localMessage);
-        setMessages(prev => [...prev, localMessage]);
-        
-        setReplyContext(null);
-        stream.getTracks().forEach(track => track.stop());
       };
 
       mediaRecorderRef.current = mediaRecorder;

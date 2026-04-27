@@ -7,29 +7,31 @@ const AudioMessage = ({ message, isOwn, onReplyToTimestamp }) => {
   const wavesurferRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     let audioUrl = '';
-    if (message.audioBlob) {
-        // If it's a blob from indexedDb
+    if (message.audioData) {
+        // Base64 Data URI from the new recording logic
+        audioUrl = message.audioData;
+    } else if (message.audioBlob) {
+        // Legacy support for previously saved blobs
         audioUrl = URL.createObjectURL(message.audioBlob);
-    } else if (message.audioUrl) {
-        // If we just got it or recorded it
-        audioUrl = message.audioUrl;
     } else {
+        setHasError(true);
         return;
     }
 
     const ws = WaveSurfer.create({
       container: containerRef.current,
-      waveColor: isOwn ? 'rgba(255, 255, 255, 0.4)' : '#64748b',
-      progressColor: isOwn ? '#ffffff' : '#3b82f6',
-      height: 40,
-      barWidth: 2,
+      waveColor: isOwn ? 'rgba(255, 255, 255, 0.5)' : '#94a3b8',
+      progressColor: '#ff5500', // SoundCloud Orange
+      height: 48, // Slightly taller for better visualization
+      barWidth: 3, // Thicker bars like SoundCloud
       barGap: 2,
-      barRadius: 2,
+      barRadius: 3,
       cursorWidth: 0,
       normalize: true,
     });
@@ -43,6 +45,10 @@ const AudioMessage = ({ message, isOwn, onReplyToTimestamp }) => {
     ws.on('play', () => setIsPlaying(true));
     ws.on('pause', () => setIsPlaying(false));
     ws.on('finish', () => setIsPlaying(false));
+    ws.on('error', (err) => {
+      console.error("WaveSurfer Error:", err);
+      setHasError(true);
+    });
 
     wavesurferRef.current = ws;
 
@@ -80,10 +86,16 @@ const AudioMessage = ({ message, isOwn, onReplyToTimestamp }) => {
           Replying to {message.replyContext.timestamp.toFixed(1)}s
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <button onClick={togglePlay} className="action-btn" style={{ width: '36px', height: '36px', background: isOwn ? 'rgba(0,0,0,0.2)' : 'var(--accent-color)' }}>
-          {isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}
-        </button>
+      
+      {hasError ? (
+        <div style={{ padding: '8px', color: '#ff5500', fontSize: '0.85rem' }}>
+          Audio unavailable or format unsupported.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button onClick={togglePlay} className="action-btn" style={{ width: '40px', height: '40px', background: '#ff5500', flexShrink: 0, boxShadow: '0 4px 10px rgba(255, 85, 0, 0.3)' }}>
+            {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+          </button>
         <div 
             className="waveform-container" 
             ref={containerRef} 
@@ -100,7 +112,7 @@ const AudioMessage = ({ message, isOwn, onReplyToTimestamp }) => {
             />
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 };
